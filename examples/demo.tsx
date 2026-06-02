@@ -1,12 +1,17 @@
 /**
  * Run with: pnpm example
  *
- * Demonstrates streaming a document to stdout where a slow async component
- * appears partway through — notice how the head/header are written
- * immediately, then a pause, then the rest.
+ * Demonstrates streaming a document to stdout where slow async components are
+ * wrapped in <Sasupensu> boundaries. Notice how the head/header and each
+ * fallback are written immediately, then — once the async work settles — the
+ * real content arrives as <template for> elements near the bottom of the
+ * document. A browser supporting Declarative Partial Updates swaps the
+ * fallbacks for the templates with no JavaScript.
+ *
+ * https://developer.chrome.com/blog/declarative-partial-updates
  */
 
-import { renderToStream } from "jsx-partial-updates";
+import { renderToStream, Sasupensu } from "jsx-partial-updates";
 import type { JSXNode } from "jsx-partial-updates";
 
 function Layout({ children }: { children?: JSXNode }) {
@@ -21,27 +26,43 @@ function Layout({ children }: { children?: JSXNode }) {
   );
 }
 
-async function User({ id }: { id: number }) {
-  // Pretend this is a database / network call.
-  await new Promise((r) => setTimeout(r, 500));
+async function User({ id, ms }: { id: number; ms: number }) {
+  // Pretend this is a database / network call of varying latency.
+  await new Promise((r) => setTimeout(r, ms));
   return (
     <li>
-      User #{id} (loaded at {new Date().toISOString()})
+      User #{id} (loaded after {ms}ms at {new Date().toISOString()})
     </li>
   );
+}
+
+function Spinner({ label }: { label: string }) {
+  return <p class="spinner">⏳ {label}</p>;
 }
 
 function Page() {
   return (
     <Layout>
       <header>
-        <h1>Streaming JSX</h1>
-        <p>The header is flushed before the user list resolves.</p>
+        <h1>Streaming JSX with &lt;Sasupensu&gt;</h1>
+        <p>The header and both fallbacks flush before the users resolve.</p>
       </header>
-      <ul>
-        <User id={1} />
-        <User id={2} />
-      </ul>
+
+      {/* The slower boundary is declared first, but its template is streamed
+          after the faster one's — out-of-order, fastest-first delivery. */}
+      <Sasupensu fallback={<Spinner label="loading profile…" />}>
+        <ul>
+          <User id={1} ms={600} />
+        </ul>
+      </Sasupensu>
+
+      <Sasupensu fallback={<Spinner label="loading recommendations…" />}>
+        <ul>
+          <User id={2} ms={200} />
+        </ul>
+      </Sasupensu>
+
+      <footer>This footer streams immediately, before either user.</footer>
     </Layout>
   );
 }

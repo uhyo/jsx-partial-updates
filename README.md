@@ -13,6 +13,9 @@ component further down has resolved.
 - 🌊 `renderToStream` returns a standard `ReadableStream<Uint8Array>`.
 - ⏳ Function components may be `async` (or return a `Promise`); they're
   awaited inline.
+- 🎭 `<Sasupensu>` — a React-Suspense-like boundary that streams a fallback
+  first and patches in the real content out-of-order via
+  [Declarative Partial Updates](https://developer.chrome.com/blog/declarative-partial-updates).
 - 🔒 Text and attribute values are HTML-escaped by default.
 - 🪶 No runtime dependencies.
 
@@ -85,6 +88,66 @@ Need the whole thing as a string instead?
 const html = await renderToString(<Page />);
 ```
 
+## Suspense with `<Sasupensu>`
+
+Awaiting an async component _inline_ blocks the stream: everything after it
+waits for it to resolve. `<Sasupensu>` (Japanese for _Suspense_) breaks that
+dependency. It flushes a `fallback` straight away and renders its children
+concurrently, then — once they resolve — streams the real content as a
+`<template>` near the bottom of the document. A browser that supports
+[Declarative Partial Updates](https://developer.chrome.com/blog/declarative-partial-updates)
+swaps the fallback for the template **with no JavaScript**.
+
+```tsx
+import { renderToStream, Sasupensu } from "jsx-partial-updates";
+
+async function Recommendations() {
+  const items = await fetchRecommendations(); // slow
+  return <ul>{items.map((i) => <li>{i.name}</li>)}</ul>;
+}
+
+function Page() {
+  return (
+    <main>
+      <h1>Shop</h1>
+      <Sasupensu fallback={<p>Loading recommendations…</p>}>
+        <Recommendations />
+      </Sasupensu>
+      <footer>Streams immediately — it never waits for the list.</footer>
+    </main>
+  );
+}
+```
+
+The stream comes out roughly like this — the shell and fallback arrive first,
+the resolved content arrives last:
+
+```html
+<main>
+  <h1>Shop</h1>
+  <?start name="S:0"><p>Loading recommendations…</p><?end>
+  <footer>Streams immediately — it never waits for the list.</footer>
+</main>
+<template for="S:0"><ul><li>…</li></ul></template>
+```
+
+A few details worth knowing:
+
+- **Out-of-order, fastest-first.** With multiple boundaries, whichever resolves
+  first has its template streamed first — even if it was declared later.
+- **Nesting works.** A nested `<Sasupensu>` is always patched _after_ its
+  parent, because its marker only exists once the parent's template is applied.
+- **Each boundary gets a unique marker name** (`S:0`, `S:1`, …) shared by its
+  range marker and its template, so updates target the right placeholder.
+- Outside a streaming browser, the markers are inert and the fallback is what's
+  shown. Calling `Sasupensu(props)` directly just returns the real children.
+
+> [!NOTE]
+> Declarative Partial Updates is an experimental platform feature (Chrome 148
+> behind a flag, with official polyfills). See the
+> [Chrome announcement](https://developer.chrome.com/blog/declarative-partial-updates)
+> for browser support.
+
 ## API
 
 | Export                       | Description                                                        |
@@ -93,6 +156,7 @@ const html = await renderToString(<Page />);
 | `renderToTextStream(node)`   | `ReadableStream<string>` of HTML fragments (no byte encoding).     |
 | `renderToString(node)`       | `Promise<string>` — fully buffered HTML.                           |
 | `renderNode(node)`           | The underlying `AsyncGenerator<string>`.                           |
+| `Sasupensu`                  | Suspense-like boundary component (`fallback` + `children`).        |
 | `jsx`, `jsxs`, `Fragment`    | The JSX factory functions (used by your compiler).                 |
 
 ### Supported props

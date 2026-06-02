@@ -14,6 +14,8 @@ export type {
   Props,
 } from "./types.js";
 export { renderNode } from "./render.js";
+export { Sasupensu } from "./suspense.js";
+export type { SasupensuProps } from "./suspense.js";
 
 /**
  * Render a JSX node into a WHATWG `ReadableStream` of UTF-8 bytes.
