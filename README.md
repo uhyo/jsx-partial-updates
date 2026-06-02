@@ -187,9 +187,11 @@ pnpm example:server # serve the stream over HTTP at http://localhost:3000
 `pnpm example:server` boots a tiny `node:http` server that streams a JSX page
 rendered by `renderToStream`. The shell and every `<Sasupensu>` fallback flush
 immediately; each slow card pops in on its own as its data resolves. Watch it
-arrive from the terminal with `curl -N http://localhost:3000`. The page ships a
-small client-side polyfill so the partial-update swaps are visible in any
-browser — browsers with native Declarative Partial Updates need no script.
+arrive from the terminal with `curl -N http://localhost:3000`. By default the
+page ships no client JavaScript — the partial-update swaps rely on native
+Declarative Partial Updates support. Append `?polyfill`
+(`http://localhost:3000/?polyfill`) to include a small client-side polyfill so
+the swaps are visible in any browser.
 
 ## License
 
