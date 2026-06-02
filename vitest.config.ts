@@ -17,8 +17,11 @@ export default defineConfig({
       "jsx-partial-updates": srcIndex,
     },
   },
-  esbuild: {
-    jsx: "automatic",
-    jsxImportSource: "jsx-partial-updates",
+  // Vite 8 transforms with oxc rather than esbuild.
+  oxc: {
+    jsx: {
+      runtime: "automatic",
+      importSource: "jsx-partial-updates",
+    },
   },
 });
