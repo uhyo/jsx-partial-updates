@@ -176,9 +176,20 @@ A few details worth knowing:
 pnpm install
 pnpm test        # run the vitest suite
 pnpm typecheck   # tsc --noEmit
-pnpm build       # emit ESM + d.ts into dist/
-pnpm example     # stream the demo document to stdout
+pnpm build          # emit ESM + d.ts into dist/
+pnpm example        # stream the demo document to stdout
+pnpm example:server # serve the stream over HTTP at http://localhost:3000
 ```
+
+> [!NOTE]
+> The examples import the package from `dist/`, so run `pnpm build` once first.
+
+`pnpm example:server` boots a tiny `node:http` server that streams a JSX page
+rendered by `renderToStream`. The shell and every `<Sasupensu>` fallback flush
+immediately; each slow card pops in on its own as its data resolves. Watch it
+arrive from the terminal with `curl -N http://localhost:3000`. The page ships a
+small client-side polyfill so the partial-update swaps are visible in any
+browser — browsers with native Declarative Partial Updates need no script.
 
 ## License
 

@@ -27,7 +27,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "example": "tsx examples/demo.tsx"
+    "example": "tsx examples/demo.tsx",
+    "example:server": "tsx examples/server.tsx"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
