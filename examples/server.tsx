@@ -14,6 +14,11 @@
  * The `-N` disables curl's buffering so you can see the shell and the spinners
  * arrive first, then each `<template>` trickle in as its data settles.
  *
+ * By default the page ships no client JavaScript: the swaps rely on native
+ * Declarative Partial Updates support. Add `?polyfill` to the URL
+ * (http://localhost:3000/?polyfill) to include a small client-side polyfill so
+ * the swaps are visible in any browser.
+ *
  * https://developer.chrome.com/blog/declarative-partial-updates
  */
 
@@ -96,7 +101,7 @@ function Card({ title, children }: { title: string; children?: JSXNode }) {
 /* The page                                                                   */
 /* -------------------------------------------------------------------------- */
 
-function Page() {
+function Page({ polyfill }: { polyfill: boolean }) {
   return (
     <html lang="en">
       <head>
@@ -104,8 +109,15 @@ function Page() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>jsx-partial-updates · streaming server demo</title>
         <style dangerouslySetInnerHTML={{ __html: STYLES }} />
-        {/* Demo-only polyfill so the swaps are visible in any browser. */}
-        <script dangerouslySetInnerHTML={{ __html: PARTIAL_UPDATES_POLYFILL }} />
+        {/*
+          Demo-only polyfill so the swaps are visible in any browser. It is
+          opt-in: add `?polyfill` to the URL to enable it. Without it, the
+          swaps only happen in a browser with native Declarative Partial
+          Updates support (Chrome 148+ behind a flag).
+        */}
+        {polyfill ? (
+          <script dangerouslySetInnerHTML={{ __html: PARTIAL_UPDATES_POLYFILL }} />
+        ) : null}
       </head>
       <body>
         <header>
@@ -152,11 +164,19 @@ function Page() {
 /* -------------------------------------------------------------------------- */
 
 const server = createServer(async (req, res) => {
+  // Parse off any query string so `/?polyfill` still routes to the page.
+  const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+
   // Ignore the browser's incidental requests so the logs stay readable.
-  if (req.url !== "/" && req.url !== "") {
-    res.writeHead(req.url === "/favicon.ico" ? 204 : 404).end();
+  if (url.pathname !== "/") {
+    res.writeHead(url.pathname === "/favicon.ico" ? 204 : 404).end();
     return;
   }
+
+  // The client-side polyfill is opt-in: enable it with `?polyfill` (or
+  // `?polyfill=1`). Off by default, so the page relies on native Declarative
+  // Partial Updates support unless asked otherwise.
+  const polyfill = url.searchParams.has("polyfill");
 
   res.writeHead(200, {
     "content-type": "text/html; charset=utf-8",
@@ -165,7 +185,7 @@ const server = createServer(async (req, res) => {
     "x-accel-buffering": "no",
   });
 
-  const stream = renderToStream(<Page />);
+  const stream = renderToStream(<Page polyfill={polyfill} />);
   try {
     // Iterate the WHATWG stream and write each chunk as it is produced, so the
     // shell and fallbacks are flushed long before the slow cards resolve.
@@ -182,6 +202,7 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`\n  jsx-partial-updates demo server\n`);
   console.log(`  ➜  http://localhost:${PORT}`);
+  console.log(`  ➜  with polyfill:   http://localhost:${PORT}/?polyfill`);
   console.log(`  ➜  streaming view:  curl -N http://localhost:${PORT}\n`);
 });
 
@@ -222,9 +243,10 @@ const STYLES = `
 
 /**
  * A minimal client-side polyfill for Declarative Partial Updates, included only
- * so this demo "just works" in any browser. Browsers that support the feature
- * natively (Chrome 148+ behind a flag) apply the templates with no JavaScript
- * and consume the markers, in which case this polyfill finds nothing to do.
+ * when the request opts in with `?polyfill` so this demo "just works" in any
+ * browser. Browsers that support the feature natively (Chrome 148+ behind a
+ * flag) apply the templates with no JavaScript and consume the markers, in
+ * which case this polyfill finds nothing to do.
  *
  * Our renderer emits range markers as processing instructions, which the HTML
  * parser turns into comment nodes:
