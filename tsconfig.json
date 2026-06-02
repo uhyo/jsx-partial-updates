@@ -8,9 +8,6 @@
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    // tsup's d.ts build injects a (now-deprecated) `baseUrl`; silence the
-    // TS 6 deprecation error it would otherwise raise.
-    "ignoreDeprecations": "6.0",
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "verbatimModuleSyntax": true,
